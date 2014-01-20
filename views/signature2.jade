@@ -1,0 +1,45 @@
+extends layout
+
+block content
+
+  #content
+    #signatureparent
+      div Please sign
+      #signature
+      div
+        input#reset(type="button", value="Reset")
+        input#done(type="button", value="Done")
+  #scrollgrabber
+
+  script(src="jquery/dist/jquery.js")
+
+  script(src='libs/jSignature/src/jSignature.js')
+  script(src='libs/jSignature/src/plugins/jSignature.CompressorBase30.js')
+  script(src='libs/jSignature/src/plugins/jSignature.CompressorSVG.js')
+  //-script(src='libs/jSignature/src/plugins/jSignature.UndoButton.js')
+  //-script(src='libs/jSignature/src/plugins/signhere/jSignature.SignHere.js')
+
+  script.
+    var sigdiv
+    $(document).ready(function() {
+      // This is the part where jSignature is initialized.
+      sigdiv = $("#signature").jSignature()
+
+      if (Modernizr.touch){
+        $('#scrollgrabber').height($('#content').height())
+      }
+
+    })
+    $('#reset').click(function(e){
+      sigdiv.jSignature('reset')
+    })
+    $('#done').click(function(e){
+      try {
+        var format = window.opener.getOption()
+        var data = sigdiv.jSignature('getData', format)
+
+        window.opener.HandlePopupResult(data);
+      }
+      catch (err) {}
+      window.close();
+    })

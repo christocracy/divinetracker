@@ -1,0 +1,150 @@
+extends layout
+
+block content
+  #content
+    a#sign-popup(href='#') Click on me to pop-up the signature window!
+    #tools
+      span: b Extract signature data as:
+        select#options
+          option(value="") (select export format)
+      div: textarea(style="width:100%;height:7em;")
+    div
+      p Display Area:
+      #displayArea
+
+  //- must use version 1.x of jquery with IE8 and earlier
+  script(src="jquery/dist/jquery.js")
+
+  script(src="js/dojo.js")
+  
+  //-[if lt IE 9]
+  script(src="libs/jSignature/libs/flashcanvas.js")
+  //-[endif]
+  script(src='libs/jSignature/src/jSignature.js')
+  script(src='libs/jSignature/src/plugins/jSignature.CompressorBase30.js')
+  script(src='libs/jSignature/src/plugins/jSignature.CompressorSVG.js')
+  
+  script.
+    function PopupCenter(url, title, w, h, options) {
+      // Fixes dual-screen position
+      var dualScreenLeft = window.screenLeft != undefined ? window.screenLeft : screen.left;
+      var dualScreenTop = window.screenTop != undefined ? window.screenTop : screen.top;
+
+      width = window.innerWidth ? window.innerWidth : document.documentElement.clientWidth ? document.documentElement.clientWidth : screen.width;
+      height = window.innerHeight ? window.innerHeight : document.documentElement.clientHeight ? document.documentElement.clientHeight : screen.height;
+
+      var left = ((width / 2) - (w / 2)) + dualScreenLeft;
+      var top = ((height / 2) - (h / 2)) + dualScreenTop;
+      //- IE disallows spaces and other special characters in window name (the second argument). 
+      var newWindow = window.open(url, title, 'scrollbars=yes,width=' + w + ',height=' + h + ',top=' + top + ',left=' + left);
+
+      // Puts focus on the newWindow
+      if (window.focus) {
+        newWindow.focus();
+      }
+    }
+
+    function getOption() {
+      var e  = $('#options')
+      return e[0].value;
+    }
+
+    //- Will execute in the context of the calling window
+    function HandlePopupResult(data) {
+      //-alert("result of popup is: " + result);
+      var tools = $('#tools')
+        , displayArea = $('#displayArea')
+        , textArea = $('textarea', tools)
+
+      displayArea.html('')
+
+      if (typeof data === 'string'){
+        textArea.val(data)
+        return
+      }
+      if($.isArray(data) && data.length === 2){
+        textArea.val(data.join(','))
+
+        if(data[0] === 'image/svg+xml') {
+          try{
+            var i = new Image()
+            i.src = 'data:' + data[0] + ';base64,' + btoa( data[1] )
+            displayArea.append(i)
+          } catch (ex) {}
+          var message = [
+            "If you don't see an image immediately above, it means your browser is unable to display in-line (data-url-formatted) SVG.", 
+            "This is NOT an issue with jSignature, as we can export proper SVG document regardless of browser's ability to display it.", 
+            "Try this page in a modern browser to see the SVG on the page, or export data as plain SVG, save to disk as text file and view in any SVG-capabale viewer."
+          ]
+          displayArea.append("<div>" + message.join("<br/>") + "</div>")
+          return
+        }
+
+        if(data[0] === 'image/svg+xml;base64') {
+          var i = new Image()
+          i.src = 'data:' + data[0] + ',' + data[1]
+          displayArea.append(i)
+          var message = [
+            "If you don't see an image immediately above, it means your browser is unable to display in-line (data-url-formatted) SVG.", 
+            "This is NOT an issue with jSignature, as we can export proper SVG document regardless of browser's ability to display it.", 
+            "Try this page in a modern browser to see the SVG on the page, or export data as plain SVG, save to disk as text file and view in any SVG-capabale viewer."
+          ]
+          displayArea.append("<div>" + message.join("<br/>") + "</div>")
+          return
+        }
+
+        if(data[0] === 'image/png;base64') {
+          var i = new Image()
+          i.src = 'data:' + data[0] + ',' + data[1]
+          var message = [
+            "As you can see, one of the problems of \"image\" extraction (besides not working on some old Androids, elsewhere)",
+            "is that it extracts A LOT OF DATA and includes all the decoration that is not part of the signature."
+          ]
+          displayArea.append("<div><b>" + message.join("<br/>") + "</b></div>")
+          displayArea.append(i)
+          return
+        }
+
+        if(data[0] === 'image/jsignature;base30') {
+          var message = [
+            "This is a vector format not natively render-able by browsers. ",
+            "Format is a compressed \"movement coordinates arrays\" structure tuned for use server-side. ",
+            "The bonus of this format is its tiny storage footprint and ease of deriving rendering instructions in programmatic, iterative manner."
+          ]
+          displayArea.append("<div><b>" + message.join("<br/>") + "</b></div>")
+          return
+        }
+
+        return
+      }
+      try {
+        textArea.val(JSON.stringify(data))
+      } catch (ex) {
+        textArea.val('Not sure how to stringify this, likely binary, format.')
+      }
+    }
+
+    $('#sign-popup').click(function () { 
+      //- IE disallows spaces and other special characters in window name (the second argument).
+      PopupCenter('/signature2', 'PleaseSign', 800, 600)
+      return false
+    });
+    
+    $(document).ready(function() {
+      var jSignature = $.fn['jSignature']
+      var export_plugins = jSignature('listPlugins','export')
+      for(var i in export_plugins){
+        if (export_plugins.hasOwnProperty(i)){
+          var name = export_plugins[i]
+          $('#options').append('<option value="' + name + '">' + name + '</option>')
+        }
+      }
+    })
+
+    $('#options').change(function() {
+      var tools = $('#tools')
+        , displayArea = $('#displayArea')
+        , textArea = $('textarea', tools)
+      displayArea.html('')
+      textArea.val('')
+    })
